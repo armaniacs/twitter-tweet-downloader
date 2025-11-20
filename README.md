@@ -91,4 +91,4 @@ python3 download_tweets.py NASA 2023-01-01
 
 ## ライセンス
 
-このプロジェクトは個人利用を想定しています。商用利用の際はTwitterの利用規約をご確認ください。
+MIT License - 詳細は [LICENSE](LICENSE) ファイルをご覧ください。
