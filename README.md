@@ -22,7 +22,50 @@
 pip install selenium webdriver-manager beautifulsoup4 undetected-chromedriver
 ```
 
-## 使い方
+## Go言語版の使い方
+
+Go言語版はシングルバイナリとして動作し、Python環境が不要です。
+
+### ビルド
+
+```bash
+go build -o tweet-downloader cmd/tweet-downloader/main.go
+```
+
+### 実行
+
+```bash
+# 基本的な使用法
+./tweet-downloader [ユーザー名] [開始日] [終了日]
+
+# 例
+./tweet-downloader NASA 2023-01-01 2023-01-05
+```
+
+### 省略時の挙動（新機能）
+
+1. **ユーザー名の省略**: `.env` ファイルの `TWITTER_USERNAME` を使用します。
+2. **開始日の省略**: `tweets.md` を読み込み、最後に取得された日付の続きから開始します。
+3. **終了日の省略**: 現在時刻まで取得します。
+
+```bash
+# .env設定済みで、続きから最新まで取得する場合
+./tweet-downloader
+```
+
+オプション:
+- `--headless`: ヘッドレスモードで実行
+- `--output`: 出力ファイル名を指定
+
+## 設定ファイル (.env)
+
+デフォルトのユーザー名を設定するには、プロジェクトルートに `.env` ファイルを作成します：
+
+```env
+TWITTER_USERNAME=NASA
+```
+
+## Python版の使い方
 
 ### 基本的な使用法
 
