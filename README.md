@@ -45,7 +45,7 @@ go build -o tweet-downloader cmd/tweet-downloader/main.go
 ### 省略時の挙動（新機能）
 
 1. **ユーザー名の省略**: `.env` ファイルの `TWITTER_USERNAME` を使用します。
-2. **開始日の省略**: `tweets.md` を読み込み、最後に取得された日付の続きから開始します。
+2. **開始日の省略**: `.lasttime.TWITTER_USERNAME` (例: `.lasttime.NASA`) をよみこみ、直近に動作させた時刻を取得する。このとき、既存の出力ファイル（デフォルト: `tweets.ユーザー名.md`）は `.tweets.old.ユーザー名.以前取得した時間.md` にリネームされます。ファイルが存在しないときは、出力ファイルを読み込み、最後に取得された日付の続きから開始します。
 3. **終了日の省略**: 現在時刻まで取得します。
 
 ```bash
@@ -55,7 +55,7 @@ go build -o tweet-downloader cmd/tweet-downloader/main.go
 
 オプション:
 - `--headless`: ヘッドレスモードで実行
-- `--output`: 出力ファイル名を指定
+- `--output`: 出力ファイル名を指定 (デフォルト: `tweets.ユーザー名.md`)
 
 ## 設定ファイル (.env)
 

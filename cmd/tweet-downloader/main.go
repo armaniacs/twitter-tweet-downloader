@@ -59,9 +59,30 @@ func getLastDateFromMarkdown(filename string) (string, error) {
 	return lastDateStr, nil
 }
 
+func saveLastRunTime(username string) {
+	filename := fmt.Sprintf(".lasttime.%s", username)
+	err := os.WriteFile(filename, []byte(time.Now().Format(time.RFC3339)), 0644)
+	if err != nil {
+		fmt.Printf("Warning: Failed to save %s: %v\n", filename, err)
+	}
+}
+
+func getLastRunTime(username string) (string, error) {
+	filename := fmt.Sprintf(".lasttime.%s", username)
+	content, err := os.ReadFile(filename)
+	if err != nil {
+		return "", err
+	}
+	t, err := time.Parse(time.RFC3339, strings.TrimSpace(string(content)))
+	if err != nil {
+		return "", err
+	}
+	return t.Format("2006-01-02"), nil
+}
+
 func main() {
 	headless := flag.Bool("headless", false, "Run in headless mode")
-	outputFile := flag.String("output", "tweets.md", "Output file name")
+	outputFile := flag.String("output", "", "Output file name (default: tweets.<username>.md)")
 	flag.Parse()
 
 	args := flag.Args()
@@ -81,25 +102,47 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Set default output file if not specified
+	if *outputFile == "" {
+		*outputFile = fmt.Sprintf("tweets.%s.md", username)
+	}
+
 	// 2. Determine Start Date
 	if len(args) > 1 {
 		startDate = args[1]
 	} else {
-		// Try to infer from output file
-		lastDateStr, err := getLastDateFromMarkdown(*outputFile)
-		if err == nil && lastDateStr != "" {
-			// Parse MM/DD
-			now := time.Now()
-			t, err := time.Parse("01/02", lastDateStr)
-			if err == nil {
-				// Assign current year
-				t = t.AddDate(now.Year(), 0, 0)
-				// If date is in future, it must be last year
-				if t.After(now) {
-					t = t.AddDate(-1, 0, 0)
+		// Try to infer from .lasttime.<username>
+		lastTimeDate, err := getLastRunTime(username)
+		if err == nil && lastTimeDate != "" {
+			startDate = lastTimeDate
+			fmt.Printf("Resuming from %s (detected from .lasttime.%s)\n", startDate, username)
+
+			// Archive existing tweets.md
+			if _, err := os.Stat(*outputFile); err == nil {
+				archiveName := fmt.Sprintf(".tweets.old.%s.%s.md", username, startDate)
+				if err := os.Rename(*outputFile, archiveName); err == nil {
+					fmt.Printf("Archived %s to %s\n", *outputFile, archiveName)
+				} else {
+					fmt.Printf("Warning: Failed to archive %s: %v\n", *outputFile, err)
 				}
-				startDate = t.Format("2006-01-02")
-				fmt.Printf("Resuming from %s (detected from %s)\n", startDate, *outputFile)
+			}
+		} else {
+			// Try to infer from output file
+			lastDateStr, err := getLastDateFromMarkdown(*outputFile)
+			if err == nil && lastDateStr != "" {
+				// Parse MM/DD
+				now := time.Now()
+				t, err := time.Parse("01/02", lastDateStr)
+				if err == nil {
+					// Assign current year
+					t = t.AddDate(now.Year(), 0, 0)
+					// If date is in future, it must be last year
+					if t.After(now) {
+						t = t.AddDate(-1, 0, 0)
+					}
+					startDate = t.Format("2006-01-02")
+					fmt.Printf("Resuming from %s (detected from %s)\n", startDate, *outputFile)
+				}
 			}
 		}
 	}
@@ -152,4 +195,5 @@ func main() {
 	}
 
 	fmt.Printf("Saved to %s\n", *outputFile)
+	saveLastRunTime(username)
 }

@@ -36,6 +36,9 @@ debug_screenshot.png
 
 # Output files
 tweets.md
+tweets.*.md
+.tweets.old.*.md
+.lasttime.*
 *.md.bak
 
 # IDE
