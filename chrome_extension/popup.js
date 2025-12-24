@@ -1,3 +1,4 @@
+"use strict";
 
 document.addEventListener('DOMContentLoaded', () => {
     const extractBtn = document.getElementById('extractBtn');
@@ -128,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Ping content script to see if it's there
                 await chrome.tabs.sendMessage(tab.id, { action: "PING" });
             } catch (e) {
-                // If ping fails, we might need to inject? 
+                // If ping fails, we might need to inject?
                 // But we added to manifest, so it should be there if we refreshed.
                 // If we didn't refresh, we need to inject.
                 await chrome.scripting.executeScript({
@@ -188,11 +189,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    copyBtn.addEventListener('click', () => {
-        output.select();
-        document.execCommand('copy');
-        const originalText = copyBtn.textContent;
-        copyBtn.textContent = "Copied!";
-        setTimeout(() => copyBtn.textContent = originalText, 1500);
+    copyBtn.addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(output.value);
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = "Copied!";
+            setTimeout(() => copyBtn.textContent = originalText, 1500);
+        } catch (err) {
+            console.error('Failed to copy: ', err);
+            status.textContent = "Failed to copy to clipboard";
+        }
     });
 });

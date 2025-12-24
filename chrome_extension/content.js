@@ -1,4 +1,6 @@
 
+"use strict";
+
 // Guard against multiple injections
 if (typeof window.tweetDownloaderRunning === 'undefined') {
     window.tweetDownloaderRunning = false;
@@ -159,6 +161,12 @@ if (typeof window.tweetDownloaderRunning === 'undefined') {
         }
     }
 
+    function escapeMarkdown(text) {
+        // Escapes characters that have special meaning in Markdown
+        // [, ], *, _, `, <, >
+        return text.replace(/([\[\]\*_`<>])/g, '\\$1');
+    }
+
     function parseTweet(article) {
         try {
             const timeEl = article.querySelector('time');
@@ -170,29 +178,58 @@ if (typeof window.tweetDownloaderRunning === 'undefined') {
             const textDiv = article.querySelector('div[data-testid="tweetText"]');
             let text = "";
             if (textDiv) {
-                // Clone to not modify DOM
-                const clone = textDiv.cloneNode(true);
+                // Initialize parts array to build the string
+                let parts = [];
 
-                // Replace images (emojis) with alt text
-                const images = clone.querySelectorAll('img');
-                for (const img of images) {
-                    if (img.alt) {
-                        img.replaceWith(document.createTextNode(img.alt));
+                // Helper to recursively traverse
+                function traverse(node) {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        parts.push(escapeMarkdown(node.textContent));
+                    } else if (node.nodeType === Node.ELEMENT_NODE) {
+                        const tagName = node.tagName.toLowerCase();
+                        if (tagName === 'img') {
+                            if (node.alt) {
+                                parts.push(escapeMarkdown(node.alt));
+                            }
+                        } else if (tagName === 'a') {
+                            // Handle Links
+                            // Twitter links often have hidden parts (http...) or visible parts.
+                            // We want [text](href)
+                            // However, nested structure might be complex.
+                            // Simplified approach for links: use innerText as label, href as link.
+                            // We must escape the label, but do not escape [ ] ( ) of the markdown syntax itself.
+
+                            // Note: 'a' tags in X structure often contain spans etc.
+                            // We don't recurse into 'a' normally if we treat it as atomic link.
+                            // But sometimes 'a' contains mentions or hashtags.
+
+                            let linkText = node.innerText;
+                            // Filter out t.co hidden spans if possible, but innerText usually handles it decently?
+                            // X uses specific classes to hide http:// etc. innerText might rely on CSS.
+                            // Let's rely on node.innerText which respects CSS display:none if rendered?
+                            // Actually, in content script, innerText is good.
+
+                            const href = node.href;
+                            if (linkText && href) {
+                                parts.push(`[${escapeMarkdown(linkText)}](${href})`);
+                            }
+                        } else {
+                            // Other elements (span, div, etc.), recurse
+                            for (const child of node.childNodes) {
+                                traverse(child);
+                            }
+                        }
                     }
                 }
 
-                // Handle links: replace <a> with [text](href)
-                const links = clone.querySelectorAll('a');
-                for (const link of links) {
-                    const linkText = link.innerText;
-                    const href = link.href;
-                    if (linkText && href) {
-                        const mdLink = `[${linkText}](${href})`;
-                        link.replaceWith(document.createTextNode(mdLink));
-                    }
+                // Do not use cloneNode, just traverse the real DOM (read-only)
+                // Actually, textDiv contains the tweet text.
+                for (const child of textDiv.childNodes) {
+                    traverse(child);
                 }
 
-                text = clone.innerText.replace(/\n/g, ' ');
+                // Join and clean up newlines
+                text = parts.join('').replace(/\n/g, ' ');
             }
 
             // ID extraction
